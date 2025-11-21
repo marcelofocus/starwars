@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batalha Cósmica</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="ui-layer">
+            <div id="hud" class="screen hidden">
+                <div class="score-container">
+                    <span class="label">PONTUAÇÃO</span>
+                    <span id="score-display">0</span>
+                </div>
+                <div class="energy-container">
+                    <div class="energy-bar-bg">
+                        <div id="energy-bar-fill"></div>
+                    </div>
+                </div>
+                <div class="fuel-container">
+                    <span class="label-small">FUEL</span>
+                    <div class="fuel-bar-bg">
+                        <div id="fuel-bar-fill"></div>
+                    </div>
+                </div>
+                <div class="lives-container">
+                    <span class="label-small">VIDAS</span>
+                    <span id="lives-display">♥ ♥ ♥</span>
+                </div>
+            </div>
+
+            <div id="main-menu" class="screen active">
+                <h1 class="title">BATALHA<br>CÓSMICA</h1>
+                <p class="subtitle">DEFENDA A GALÁXIA</p>
+
+                <div class="ship-selection">
+                    <h3>ESCOLHA SUA NAVE</h3>
+                    <div class="ships">
+                        <div class="ship-option selected" data-ship="X-WING">
+                            <canvas width="200" height="160" class="ship-canvas" data-type="X-WING"></canvas>
+                            <span>X-WING</span>
+                            <small>Equilibrada</small>
+                        </div>
+                        <div class="ship-option" data-ship="A-WING">
+                            <canvas width="200" height="160" class="ship-canvas" data-type="A-WING"></canvas>
+                            <span>A-WING</span>
+                            <small>Rápida</small>
+                        </div>
+                        <div class="ship-option" data-ship="Y-WING">
+                            <canvas width="200" height="160" class="ship-canvas" data-type="Y-WING"></canvas>
+                            <span>Y-WING</span>
+                            <small>Resistente</small>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="start-btn" class="btn primary">INICIAR MISSÃO</button>
+                <div class="controls-hint">
+                    MOUSE para Mover • CLIQUE para Atirar
+                </div>
+            </div>
+
+            <div id="game-over" class="screen hidden">
+                <h2 class="title">FALHA CRÍTICA</h2>
+                <div class="final-score">
+                    <span class="label">PONTUAÇÃO FINAL</span>
+                    <span id="final-score-display">0</span>
+                </div>
+                <div class="high-score">
+                    <span class="label">RECORDE</span>
+                    <span id="high-score-display">0</span>
+                </div>
+                <button id="restart-btn" class="btn primary">TENTAR NOVAMENTE</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        window.onerror = function (message, source, lineno, colno, error) {
+            alert("Erro no Jogo: " + message + "\nLinha: " + lineno);
+            console.error(error);
+        };
+    </script>
+    <script type="module" src="main.js"></script>
+</body>
+
+</html>
