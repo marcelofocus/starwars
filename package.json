@@ -1,0 +1,16 @@
+{
+  "name": "starwars-game",
+  "version": "1.0.0",
+  "description": "Star Wars space shooter game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["game", "starwars", "canvas"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
