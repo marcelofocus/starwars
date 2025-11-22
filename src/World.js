@@ -2,6 +2,7 @@ import Utils from './Utils.js';
 import Enemy from './Enemy.js';
 import Meteor from './Meteor.js';
 import Boss from './Boss.js';
+import PlanetEffects from './PlanetEffects.js';
 
 export default class World {
     constructor(game) {
@@ -129,7 +130,7 @@ export default class World {
                 this.game.score += 5000 * this.bossLevel;
 
                 this.bossLevel++;
-                this.nextBossScore += 3000;
+                this.nextBossScore = this.game.score + 10000;
                 this.speed += 1;
                 this.enemyInterval = Math.max(200, this.enemyInterval - 100);
 
@@ -261,7 +262,6 @@ export default class World {
                             this.game.score += enemy.scoreValue;
                             this.game.audio.playExplosionSound();
                             this.createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 20, enemy.color);
-                            if (Math.random() > 0.9) this.game.player.weaponLevel = Math.min(this.game.player.weaponLevel + 1, 3);
                         }
                         break;
                     }
@@ -297,6 +297,11 @@ export default class World {
 
                             const fragments = meteor.fragment();
                             this.meteors.push(...fragments);
+
+                            // Loot Drop Chance (10%)
+                            if (Math.random() < 0.1) {
+                                this.spawnLoot(meteor.x, meteor.y);
+                            }
 
                             this.createExplosion(meteor.x, meteor.y, 20, '#ff8800');
                             this.game.audio.playExplosionSound();
@@ -334,16 +339,17 @@ export default class World {
         if (forceFuel || this.game.player.fuel < 30) {
             type = 'FUEL';
         } else {
-            if (rand < 0.35) {
-                type = 'FUEL';
-            } else if (rand < 0.55) {
-                type = 'SHIELD';
-            } else if (rand < 0.80) {
-                type = 'WEAPON';
+            // Adjusted Probabilities
+            if (rand < 0.30) {
+                type = 'FUEL';       // 30%
+            } else if (rand < 0.50) {
+                type = 'SHIELD';     // 20%
+            } else if (rand < 0.75) {
+                type = 'WEAPON';     // 25%
             } else if (rand < 0.95) {
-                type = 'RAPID_FIRE';
+                type = 'RAPID_FIRE'; // 20% (Increased from 15%)
             } else {
-                type = 'NONE';
+                type = 'NONE';       // 5%
             }
         }
 
@@ -357,6 +363,26 @@ export default class World {
             hasRings: Math.random() > 0.5,
             ringColor: `hsla(${Utils.random(0, 360)}, 40%, 60%, 0.6)`,
             ringAngle: Utils.random(-0.5, 0.5)
+        });
+    }
+
+    spawnLoot(x, y) {
+        const rand = Math.random();
+        let type = 'FUEL';
+
+        if (rand < 0.1) type = 'SHIELD'; // Rare
+        else if (rand < 0.4) type = 'RAPID_FIRE';
+        else if (rand < 0.7) type = 'WEAPON';
+        else type = 'FUEL';
+
+        // Spawn a floating icon as loot
+        this.planets.push({
+            x: x,
+            y: y,
+            radius: 25, // Hitbox size
+            type: type,
+            isLoot: true,
+            speed: 0.5
         });
     }
 
@@ -450,78 +476,89 @@ export default class World {
             ctx.save();
             ctx.translate(planet.x, planet.y);
 
-            // Multi-band Saturn-style rings configuration
-            const ringRadii = [
-                { inner: planet.radius * 1.3, outer: planet.radius * 1.5, alpha: 0.6 },
-                { inner: planet.radius * 1.55, outer: planet.radius * 1.75, alpha: 0.4 },
-                { inner: planet.radius * 1.8, outer: planet.radius * 1.95, alpha: 0.3 }
-            ];
-
-            // BACK HALF of rings (behind planet)
-            if (planet.hasRings) {
-                ctx.save();
-                ctx.rotate(planet.ringAngle);
-
-                ringRadii.forEach(ring => {
-                    ctx.beginPath();
-                    // Bottom half: π to 2π (behind planet)
-                    ctx.ellipse(0, 0, ring.outer, ring.outer * 0.15, 0, Math.PI, Math.PI * 2);
-                    ctx.ellipse(0, 0, ring.inner, ring.inner * 0.15, 0, Math.PI * 2, Math.PI, true);
-                    ctx.closePath();
-
-                    const ringColor = planet.ringColor.replace(/[\d.]+\)$/, `${ring.alpha * 0.7})`); // Darker behind
-                    ctx.fillStyle = ringColor;
-                    ctx.fill();
-                    ctx.strokeStyle = ringColor.replace(/[\d.]+\)$/, `${ring.alpha * 0.5})`);
-                    ctx.lineWidth = 0.5;
-                    ctx.stroke();
-                });
-
-                ctx.restore();
-            }
-
-            // Draw planet body
-            const gradient = ctx.createRadialGradient(0, 0, planet.radius * 0.3, 0, 0, planet.radius);
-            gradient.addColorStop(0, planet.color);
-            gradient.addColorStop(1, '#000');
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
-            ctx.fill();
-
-            // FRONT HALF of rings (in front of planet)
-            if (planet.hasRings) {
-                ctx.save();
-                ctx.rotate(planet.ringAngle);
-
-                ringRadii.forEach(ring => {
-                    ctx.beginPath();
-                    // Top half: 0 to π (in front of planet)
-                    ctx.ellipse(0, 0, ring.outer, ring.outer * 0.15, 0, 0, Math.PI);
-                    ctx.ellipse(0, 0, ring.inner, ring.inner * 0.15, 0, Math.PI, 0, true);
-                    ctx.closePath();
-
-                    const ringColor = planet.ringColor.replace(/[\d.]+\)$/, `${ring.alpha})`);
-                    ctx.fillStyle = ringColor;
-                    ctx.fill();
-                    ctx.strokeStyle = ringColor.replace(/[\d.]+\)$/, `${ring.alpha * 0.7})`);
-                    ctx.lineWidth = 0.5;
-                    ctx.stroke();
-                });
-
-                ctx.restore();
-            }
-
-            // Power-up icons
-            if (planet.type !== 'NONE') {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                ctx.font = `${planet.radius * 0.5}px Arial`;
+            if (planet.isLoot) {
+                // Draw just the icon for loot
+                ctx.shadowColor = '#fff';
+                ctx.shadowBlur = 15;
+                ctx.fillStyle = '#fff';
+                ctx.font = '30px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 const icons = { FUEL: '⛽', SHIELD: '🛡️', WEAPON: '⚡', RAPID_FIRE: '🔥' };
-                ctx.fillText(icons[planet.type] || '�', 0, 0);
-            }
+                ctx.fillText(icons[planet.type] || '?', 0, 0);
+            } else {
+                // Multi-band Saturn-style rings configuration
+                const ringRadii = [
+                    { inner: planet.radius * 1.3, outer: planet.radius * 1.5, alpha: 0.6 },
+                    { inner: planet.radius * 1.55, outer: planet.radius * 1.75, alpha: 0.4 },
+                    { inner: planet.radius * 1.8, outer: planet.radius * 1.95, alpha: 0.3 }
+                ];
 
+                // BACK HALF of rings (behind planet)
+                if (planet.hasRings) {
+                    ctx.save();
+                    ctx.rotate(planet.ringAngle);
+
+                    ringRadii.forEach(ring => {
+                        ctx.beginPath();
+                        // Bottom half: π to 2π (behind planet)
+                        ctx.ellipse(0, 0, ring.outer, ring.outer * 0.15, 0, Math.PI, Math.PI * 2);
+                        ctx.ellipse(0, 0, ring.inner, ring.inner * 0.15, 0, Math.PI * 2, Math.PI, true);
+                        ctx.closePath();
+
+                        const ringColor = planet.ringColor.replace(/[\d.]+\)$/, `${ring.alpha * 0.7})`); // Darker behind
+                        ctx.fillStyle = ringColor;
+                        ctx.fill();
+                        ctx.strokeStyle = ringColor.replace(/[\d.]+\)$/, `${ring.alpha * 0.5})`);
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    });
+
+                    ctx.restore();
+                }
+
+                // Draw planet body
+                const gradient = ctx.createRadialGradient(0, 0, planet.radius * 0.3, 0, 0, planet.radius);
+                gradient.addColorStop(0, planet.color);
+                gradient.addColorStop(1, '#000');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // FRONT HALF of rings (in front of planet)
+                if (planet.hasRings) {
+                    ctx.save();
+                    ctx.rotate(planet.ringAngle);
+
+                    ringRadii.forEach(ring => {
+                        ctx.beginPath();
+                        // Top half: 0 to π (in front of planet)
+                        ctx.ellipse(0, 0, ring.outer, ring.outer * 0.15, 0, 0, Math.PI);
+                        ctx.ellipse(0, 0, ring.inner, ring.inner * 0.15, 0, Math.PI, 0, true);
+                        ctx.closePath();
+
+                        const ringColor = planet.ringColor.replace(/[\d.]+\)$/, `${ring.alpha})`);
+                        ctx.fillStyle = ringColor;
+                        ctx.fill();
+                        ctx.strokeStyle = ringColor.replace(/[\d.]+\)$/, `${ring.alpha * 0.7})`);
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    });
+
+                    ctx.restore();
+                }
+
+                // Power-up icons (for planets)
+                if (planet.type !== 'NONE') {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    ctx.font = `${planet.radius * 0.5}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    const icons = { FUEL: '⛽', SHIELD: '🛡️', WEAPON: '⚡', RAPID_FIRE: '🔥' };
+                    ctx.fillText(icons[planet.type] || '', 0, 0);
+                }
+            }
             ctx.restore();
         });
 

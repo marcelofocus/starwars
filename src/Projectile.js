@@ -31,10 +31,23 @@ export default class Projectile {
     }
 
     draw(ctx) {
-        ctx.fillStyle = this.color;
-        ctx.shadowBlur = 10;
+        // Star Wars-style laser beams (elongated rectangles with intense glow)
+        const beamLength = this.type === 'POWER' ? 20 : 15;
+        const beamWidth = this.type === 'POWER' ? 3 : 2;
+
+        // Intense glow for laser effect
+        ctx.shadowBlur = 15;
         ctx.shadowColor = this.color;
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+
+        // Core beam (bright)
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y - beamWidth / 2, beamLength, beamWidth);
+
+        // Outer glow (softer, wider)
+        ctx.globalAlpha = 0.4;
+        ctx.fillRect(this.x - 1, this.y - beamWidth / 2 - 1, beamLength + 2, beamWidth + 2);
+
+        ctx.globalAlpha = 1.0;
         ctx.shadowBlur = 0;
     }
 }

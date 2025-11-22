@@ -5,12 +5,43 @@ export default class AudioSystem {
         this.masterGain.connect(this.ctx.destination);
         this.masterGain.gain.value = 0.3; // Default volume
         this.isMuted = false;
+        this.isMenuMusic = false;
     }
 
     init() {
         // Resume context if suspended (browser policy)
         if (this.ctx.state === 'suspended') {
             this.ctx.resume();
+        }
+        this.loadMusic();
+    }
+
+    async loadMusic() {
+        try {
+            // Load Game Music
+            const response = await fetch('music/background.mp3');
+            const arrayBuffer = await response.arrayBuffer();
+            this.musicBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+            console.log('Background music loaded');
+
+            // Load Menu Music
+            const menuResponse = await fetch('music/menu.mp3');
+            const menuArrayBuffer = await menuResponse.arrayBuffer();
+            this.menuMusicBuffer = await this.ctx.decodeAudioData(menuArrayBuffer);
+            console.log('Menu music loaded');
+
+            // Load Boss Music
+            const bossResponse = await fetch('music/boss.mp3');
+            const bossArrayBuffer = await bossResponse.arrayBuffer();
+            this.bossMusicBuffer = await this.ctx.decodeAudioData(bossArrayBuffer);
+            console.log('Boss music loaded');
+
+            if (this.playWhenReady) {
+                if (this.playWhenReady === 'MENU') this.playMenuMusic();
+                else this.playMusic();
+            }
+        } catch (error) {
+            console.error('Error loading music:', error);
         }
     }
 
@@ -38,48 +69,38 @@ export default class AudioSystem {
     }
 
     playShootSound() {
-        // Iconic Star Wars-style laser sound
+        if (this.isMuted) return;
         const now = this.ctx.currentTime;
 
-        // Main laser tone - rapid frequency sweep
+        // "Cable Guy" Blaster Sound (Star Wars Style)
+        // Source: Sawtooth for rich harmonics
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
 
-        osc.type = 'sawtooth'; // More authentic laser sound
-        osc.frequency.setValueAtTime(1200, now);
-        osc.frequency.exponentialRampToValueAtTime(400, now + 0.08);
+        osc.type = 'sawtooth';
 
-        gain.gain.setValueAtTime(0.15, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+        // Pitch Sweep: High to Low (Pew!)
+        osc.frequency.setValueAtTime(2000, now);
+        osc.frequency.exponentialRampToValueAtTime(150, now + 0.15);
 
-        osc.connect(gain);
+        // Filter Sweep: Resonant Lowpass (The "Laser" character)
+        filter.type = 'lowpass';
+        filter.Q.value = 15; // High resonance for the "zap"
+        filter.frequency.setValueAtTime(2500, now);
+        filter.frequency.exponentialRampToValueAtTime(200, now + 0.15);
+
+        // Envelope: Punchy attack, quick decay
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+        // Connect: Osc -> Filter -> Gain -> Master
+        osc.connect(filter);
+        filter.connect(gain);
         gain.connect(this.masterGain);
+
         osc.start(now);
-        osc.stop(now + 0.15);
-
-        // White noise burst for "zap" effect
-        const bufferSize = this.ctx.sampleRate * 0.05;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1;
-        }
-
-        const noise = this.ctx.createBufferSource();
-        const noiseGain = this.ctx.createGain();
-        const noiseFilter = this.ctx.createBiquadFilter();
-
-        noise.buffer = buffer;
-        noiseFilter.type = 'bandpass';
-        noiseFilter.frequency.setValueAtTime(800, now);
-        noiseGain.gain.setValueAtTime(0.08, now);
-        noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
-
-        noise.connect(noiseFilter);
-        noiseFilter.connect(noiseGain);
-        noiseGain.connect(this.masterGain);
-        noise.start(now);
-        noise.stop(now + 0.05);
+        osc.stop(now + 0.2);
     }
 
     playExplosionSound() {
@@ -160,155 +181,65 @@ export default class AudioSystem {
         osc.stop(this.ctx.currentTime + 0.2);
     }
 
-    playCrashSound() {
-        this.playTone(100, 'sawtooth', 0.5);
-        this.playTone(80, 'square', 0.5);
-    }
     playMusic() {
-        if (this.isMuted || (this.isPlayingMusic && !this.isBossMusic)) return;
+        if (this.isMuted || (this.isPlayingMusic && !this.isBossMusic && !this.isMenuMusic)) return;
 
-        // If switching from boss music, stop first
-        if (this.isBossMusic) this.stopMusic();
+        this.stopMusic();
 
-        this.isPlayingMusic = true;
-        this.isBossMusic = false;
-        this.noteIndex = 0;
-        this.tempo = 130; // Faster Battle Tempo
-        this.nextNoteTime = this.ctx.currentTime;
-        this.scheduleNextNote();
+        if (this.musicBuffer) {
+            this.isPlayingMusic = true;
+            this.isBossMusic = false;
+            this.isMenuMusic = false;
+
+            this.musicSource = this.ctx.createBufferSource();
+            this.musicSource.buffer = this.musicBuffer;
+            this.musicSource.loop = true;
+            this.musicSource.connect(this.masterGain);
+            this.musicSource.start();
+        } else {
+            console.log('Game music not ready yet, queuing...');
+            this.playWhenReady = 'GAME';
+        }
+    }
+
+    playMenuMusic() {
+        if (this.isMuted || (this.isPlayingMusic && this.isMenuMusic)) return;
+
+        this.stopMusic();
+
+        if (this.menuMusicBuffer) {
+            this.isPlayingMusic = true;
+            this.isMenuMusic = true;
+            this.isBossMusic = false;
+
+            this.musicSource = this.ctx.createBufferSource();
+            this.musicSource.buffer = this.menuMusicBuffer;
+            this.musicSource.loop = true;
+            this.musicSource.connect(this.masterGain);
+            this.musicSource.start();
+        } else {
+            console.log('Menu music not ready yet, queuing...');
+            this.playWhenReady = 'MENU';
+        }
     }
 
     playBossMusic() {
         if (this.isMuted || (this.isPlayingMusic && this.isBossMusic)) return;
 
-        // If switching from normal music, stop first
-        if (this.isPlayingMusic) this.stopMusic();
+        this.stopMusic();
 
-        this.isPlayingMusic = true;
-        this.isBossMusic = true;
-        this.noteIndex = 0;
-        this.tempo = 160; // Very Fast Boss Tempo
-        this.nextNoteTime = this.ctx.currentTime;
-        this.scheduleNextNote();
-    }
+        if (this.bossMusicBuffer) {
+            this.isPlayingMusic = true;
+            this.isBossMusic = true;
+            this.isMenuMusic = false;
 
-    scheduleNextNote() {
-        if (!this.isPlayingMusic) return;
-
-        const secondsPerBeat = 60.0 / this.tempo;
-        const lookahead = 0.1; // How far ahead to schedule audio (sec)
-
-        while (this.nextNoteTime < this.ctx.currentTime + lookahead) {
-            if (this.isBossMusic) {
-                this.playBossStep(this.noteIndex, this.nextNoteTime);
-            } else {
-                this.playStep(this.noteIndex, this.nextNoteTime);
-            }
-
-            this.nextNoteTime += secondsPerBeat * 0.5; // Eighth notes
-            this.noteIndex++;
-            if (this.noteIndex >= 32) this.noteIndex = 0; // 4 bar loop
-        }
-
-        this.timerID = setTimeout(() => this.scheduleNextNote(), 25);
-    }
-
-    playStep(index, time) {
-        // Bass Line (Imperial March-ish rhythm)
-        // Dum Dum Dum Dum-te-Dum Dum-te-Dum
-        const bassOsc = this.ctx.createOscillator();
-        const bassGain = this.ctx.createGain();
-        bassOsc.type = 'sawtooth';
-        bassOsc.frequency.value = 110; // A2
-
-        // Simple rhythmic pattern
-        if ([0, 4, 8, 12, 16, 20, 24, 28].includes(index)) {
-            // Downbeats
-            bassOsc.frequency.value = 110; // A
-        } else if ([14, 15, 30, 31].includes(index)) {
-            // Fill
-            bassOsc.frequency.value = 82.4; // E
+            this.musicSource = this.ctx.createBufferSource();
+            this.musicSource.buffer = this.bossMusicBuffer;
+            this.musicSource.loop = true;
+            this.musicSource.connect(this.masterGain);
+            this.musicSource.start();
         } else {
-            // Offbeats (silence or lower volume)
-            bassGain.gain.value = 0;
-        }
-
-        bassGain.gain.setValueAtTime(0.2, time);
-        bassGain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
-
-        bassOsc.connect(bassGain);
-        bassGain.connect(this.masterGain);
-        bassOsc.start(time);
-        bassOsc.stop(time + 0.2);
-
-        // Melody / Brass (Triplets feel)
-        if (index % 8 === 0) {
-            const leadOsc = this.ctx.createOscillator();
-            const leadGain = this.ctx.createGain();
-            leadOsc.type = 'sawtooth';
-            // Chord hits
-            leadOsc.frequency.value = [440, 554, 659][Math.floor(Math.random() * 3)]; // A Major / F# Minor bits
-
-            leadGain.gain.setValueAtTime(0.1, time);
-            leadGain.gain.exponentialRampToValueAtTime(0.01, time + 0.4);
-
-            leadOsc.connect(leadGain);
-            leadGain.connect(this.masterGain);
-            leadOsc.start(time);
-            leadOsc.stop(time + 0.4);
-        }
-    }
-
-    playBossStep(index, time) {
-        // Intense, low, fast
-        const bassOsc = this.ctx.createOscillator();
-        const bassGain = this.ctx.createGain();
-        bassOsc.type = 'square'; // Harsher sound
-
-        // Driving 16th note bass
-        bassOsc.frequency.value = 55; // A1 (Very Low)
-
-        bassGain.gain.setValueAtTime(0.3, time);
-        bassGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1); // Short decay
-
-        bassOsc.connect(bassGain);
-        bassGain.connect(this.masterGain);
-        bassOsc.start(time);
-        bassOsc.stop(time + 0.1);
-
-        // Dramatic Stabs
-        if (index % 16 === 0) {
-            const stabOsc = this.ctx.createOscillator();
-            const stabGain = this.ctx.createGain();
-            stabOsc.type = 'sawtooth';
-            stabOsc.frequency.value = 220; // A3
-
-            // Pitch drop effect
-            stabOsc.frequency.exponentialRampToValueAtTime(110, time + 0.5);
-
-            stabGain.gain.setValueAtTime(0.4, time);
-            stabGain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
-
-            stabOsc.connect(stabGain);
-            stabGain.connect(this.masterGain);
-            stabOsc.start(time);
-            stabOsc.stop(time + 0.5);
-        }
-
-        // High tension beep
-        if (Math.random() > 0.8) {
-            const beepOsc = this.ctx.createOscillator();
-            const beepGain = this.ctx.createGain();
-            beepOsc.type = 'sine';
-            beepOsc.frequency.value = 880;
-
-            beepGain.gain.setValueAtTime(0.1, time);
-            beepGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
-
-            beepOsc.connect(beepGain);
-            beepGain.connect(this.masterGain);
-            beepOsc.start(time);
-            beepOsc.stop(time + 0.1);
+            console.log('Boss music not ready yet');
         }
     }
 
@@ -359,6 +290,16 @@ export default class AudioSystem {
     stopMusic() {
         this.isPlayingMusic = false;
         this.isBossMusic = false;
+        this.isMenuMusic = false;
         clearTimeout(this.timerID);
+
+        if (this.musicSource) {
+            try {
+                this.musicSource.stop();
+            } catch (e) {
+                // Ignore if already stopped
+            }
+            this.musicSource = null;
+        }
     }
 }

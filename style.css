@@ -31,13 +31,12 @@ body {
 }
 
 #game-canvas {
-    display: block;
-    width: 100%;
-    height: 100%;
     position: absolute;
     top: 0;
     left: 0;
-    z-index: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
 }
 
 #ui-layer {
@@ -46,10 +45,117 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
+    z-index: 10;
     pointer-events: none;
-    z-index: 100;
 }
 
+/* HUD Layout */
+#hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    padding: 20px;
+    transition: opacity 0.3s ease;
+    opacity: 1;
+}
+
+#hud.hidden {
+    opacity: 0;
+}
+
+.score-container {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.status-bars {
+    position: absolute;
+    top: 80px;
+    /* Below score */
+    left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.lives-container {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    text-align: right;
+}
+
+.label {
+    font-size: 0.8rem;
+    color: var(--primary-color);
+    letter-spacing: 0.2em;
+    margin-bottom: 0.2rem;
+}
+
+.label-small {
+    font-size: 0.7rem;
+    color: #aaa;
+    letter-spacing: 1px;
+    display: block;
+    margin-bottom: 2px;
+    text-align: left;
+}
+
+#score-display {
+    font-size: 2.5rem;
+    font-weight: 700;
+    text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+}
+
+#lives-display {
+    font-size: 1.5rem;
+    color: #ff4444;
+    text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+}
+
+/* Bars */
+.energy-bar-bg,
+.fuel-bar-bg {
+    width: 200px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.energy-bar-bg {
+    height: 15px;
+}
+
+.fuel-bar-bg {
+    height: 8px;
+    border-radius: 4px;
+}
+
+#energy-bar-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #00f3ff, #bc13fe);
+    transition: width 0.2s ease;
+    box-shadow: 0 0 10px #00f3ff;
+}
+
+#fuel-bar-fill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #ffaa00, #ff4400);
+    border-radius: 3px;
+    transition: width 0.2s ease-out;
+}
+
+/* Screens (Menu, Game Over) */
 .screen {
     position: absolute;
     top: 0;
@@ -61,6 +167,7 @@ body {
     justify-content: center;
     align-items: center;
     background: rgba(5, 5, 16, 0.7);
+    /* Dark overlay for menus */
     backdrop-filter: blur(5px);
     transition: opacity 0.3s ease;
     pointer-events: auto;
@@ -76,6 +183,7 @@ body {
     pointer-events: auto;
 }
 
+/* Menu Elements */
 .title {
     font-size: 4rem;
     font-weight: 700;
@@ -107,117 +215,13 @@ body {
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
+    pointer-events: auto;
+    margin-top: 2rem;
 }
 
 .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 20px rgba(0, 243, 255, 0.4);
-}
-
-.controls-hint {
-    margin-top: 2rem;
-    font-size: 0.9rem;
-    opacity: 0.6;
-}
-
-/* HUD */
-#hud {
-    background: transparent;
-    backdrop-filter: none;
-    justify-content: flex-start;
-    align-items: flex-start;
-    padding: 2rem;
-    pointer-events: none;
-}
-
-.score-container {
-    display: flex;
-    flex-direction: column;
-}
-
-.label {
-    font-size: 0.8rem;
-    color: var(--primary-color);
-    letter-spacing: 0.2em;
-    margin-bottom: 0.2rem;
-}
-
-#score-display {
-    font-size: 2.5rem;
-    font-weight: 700;
-    text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
-}
-
-/* Energy Bar */
-.energy-container {
-    margin-top: 1rem;
-}
-
-.energy-bar-bg {
-    width: 200px;
-    height: 20px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-#energy-bar-fill {
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, #00f3ff, #bc13fe);
-    transition: width 0.2s ease;
-    box-shadow: 0 0 10px #00f3ff;
-}
-
-/* Fuel Bar */
-.fuel-container {
-    margin-top: 0.5rem;
-}
-
-.label-small {
-    font-size: 0.7rem;
-    color: #aaa;
-    letter-spacing: 1px;
-    display: block;
-    margin-bottom: 2px;
-}
-
-.fuel-bar-bg {
-    width: 200px;
-    height: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-#fuel-bar-fill {
-    height: 100%;
-    width: 100%;
-    background: linear-gradient(90deg, #ffaa00, #ff4400);
-    border-radius: 3px;
-    transition: width 0.2s ease-out;
-}
-
-/* Lives Container */
-.lives-container {
-    margin-top: 0.5rem;
-}
-
-#lives-display {
-    font-size: 1.2rem;
-    color: #ff4444;
-}
-
-#final-score-display {
-    font-size: 3rem;
-    font-weight: 700;
-}
-
-#high-score-display {
-    font-size: 1.5rem;
-    color: var(--secondary-color);
+    transform: scale(1.05);
+    box-shadow: 0 0 20px var(--primary-color);
 }
 
 /* Ship Selection */
@@ -314,4 +318,29 @@ body {
     z-index: 1;
     text-transform: uppercase;
     letter-spacing: 1px;
+}
+
+/* Game Over Specifics */
+#final-score-display {
+    font-size: 3rem;
+    font-weight: 700;
+}
+
+#high-score-display {
+    font-size: 1.5rem;
+    color: var(--secondary-color);
+}
+
+.controls-hint {
+    margin-top: 2rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+}
+
+/* Gamepad Focus */
+.gamepad-focus {
+    outline: 2px solid var(--primary-color);
+    box-shadow: 0 0 15px var(--primary-color);
+    transform: scale(1.05);
 }

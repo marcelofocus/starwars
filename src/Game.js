@@ -41,6 +41,7 @@ export default class Game {
             highScore: document.getElementById('high-score-display'),
             startBtn: document.getElementById('start-btn'),
             restartBtn: document.getElementById('restart-btn'),
+            energyBar: document.getElementById('energy-bar-fill'),
             fuelBar: document.getElementById('fuel-bar-fill'),
             livesDisplay: document.getElementById('lives-display')
         };
@@ -60,6 +61,8 @@ export default class Game {
         this.selectedShip = 'X-WING';
         this.setupShipSelection();
         this.renderMenuShips();
+
+
     }
 
     init() {
@@ -68,6 +71,10 @@ export default class Game {
         this.setupInputs();
 
         this.ui.highScore.textContent = this.highScore;
+
+        // Initialize audio and play menu music
+        this.audio.init();
+        this.audio.playMenuMusic();
 
         // Start loop
         requestAnimationFrame(this.loop.bind(this));
@@ -96,6 +103,8 @@ export default class Game {
                 console.log("Restart Button Clicked");
                 this.startGame();
             });
+        } else {
+            console.error("Restart Button NOT FOUND in DOM");
         }
 
         // Gamepad Events
@@ -178,36 +187,67 @@ export default class Game {
     }
 
     pollGamepad() {
+        const gamepads = navigator.getGamepads();
+
+        // Auto-detect if not set (handles pre-connected controllers)
+        if (this.input.gamepadIndex === null) {
+            for (let i = 0; i < gamepads.length; i++) {
+                if (gamepads[i]) {
+                    this.input.gamepadIndex = i;
+                    console.log("Gamepad auto-detected at index", i);
+                    break;
+                }
+            }
+        }
+
         if (this.input.gamepadIndex !== null) {
-            const gamepad = navigator.getGamepads()[this.input.gamepadIndex];
+            const gamepad = gamepads[this.input.gamepadIndex];
             if (gamepad) {
-                // Gamepad polling logic here if needed for menu navigation
-                // For now, just basic input handling is in Player.js
+                // Update axes
+                this.input.gamepadAxes = [];
+                for (let i = 0; i < gamepad.axes.length; i++) {
+                    this.input.gamepadAxes.push(gamepad.axes[i]);
+                }
+
+                // Update buttons
+                this.input.gamepadButtons = [];
+                for (let i = 0; i < gamepad.buttons.length; i++) {
+                    this.input.gamepadButtons.push(gamepad.buttons[i]);
+                }
+            } else {
+                // Gamepad disconnected
+                this.input.gamepadIndex = null;
             }
         }
     }
 
     startGame() {
-        this.state = 'PLAYING';
-        this.score = 0;
-        this.world.reset();
+        console.log("startGame called");
+        try {
+            this.state = 'PLAYING';
+            this.score = 0;
+            this.world.reset();
 
-        // Re-initialize player with selected ship
-        this.player = new Player(this, this.selectedShip);
+            // Re-initialize player with selected ship
+            console.log("Creating player with ship:", this.selectedShip);
+            this.player = new Player(this, this.selectedShip);
 
-        this.player.y = this.height / 2;
-        this.player.x = 100;
+            this.player.y = this.height / 2;
+            this.player.x = 100;
 
-        this.ui.menu.classList.add('hidden');
-        this.ui.menu.classList.remove('active');
-        this.ui.gameOver.classList.add('hidden');
-        this.ui.gameOver.classList.remove('active');
-        this.ui.hud.classList.remove('hidden');
-        this.ui.hud.classList.add('active');
+            this.ui.menu.classList.add('hidden');
+            this.ui.menu.classList.remove('active');
+            this.ui.gameOver.classList.add('hidden');
+            this.ui.gameOver.classList.remove('active');
+            this.ui.hud.classList.remove('hidden');
+            this.ui.hud.classList.add('active');
 
-        this.audio.init();
-        this.audio.playStartSound();
-        this.audio.playMusic();
+            this.audio.playStartSound();
+            this.audio.playMusic();
+            console.log("Game started successfully");
+        } catch (e) {
+            console.error("Error in startGame:", e);
+        }
     }
 
     gameOver() {
@@ -224,14 +264,16 @@ export default class Game {
         this.ui.gameOver.classList.remove('hidden');
         this.ui.gameOver.classList.add('active');
 
-        this.audio.playCrashSound();
+        this.audio.playExplosionSound();
     }
 
     update(deltaTime) {
         this.pollGamepad();
+
         if (this.state === 'PLAYING') {
             this.player.update(this.input, deltaTime);
             this.world.update(deltaTime);
+            // ... rest of update loop ...
 
             // Collision Detection
             const playerBounds = this.player.getBounds();
@@ -270,8 +312,21 @@ export default class Game {
             } else {
                 this.ui.fuelBar.style.background = 'linear-gradient(90deg, #ffaa00, #ff4400)';
             }
+
+            // Update Energy Bar → Shield Timer Display
+            if (this.player.shieldActive) {
+                const shieldPercent = (this.player.shieldTimer / 5000) * 100; // 5 second shield
+                this.ui.energyBar.style.width = `${shieldPercent}%`;
+                this.ui.energyBar.style.background = 'linear-gradient(90deg, #00f3ff, #bc13fe)';
+                this.ui.energyBar.style.boxShadow = '0 0 10px #00f3ff';
+            } else {
+                this.ui.energyBar.style.width = '0%';
+                this.ui.energyBar.style.boxShadow = 'none';
+            }
         }
     }
+
+
 
     draw() {
         // Clear
